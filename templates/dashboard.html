@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark rounded mb-4 px-3">
+  <span class="navbar-brand">
+    Panel użytkownika
+  </span>
+  <div class="ms-auto dropdown">
+    <a class="nav-link dropdown-toggle text-white" href="#" role="button" data-bs-toggle="dropdown">
+      {{ email }}
+    </a>
+    <ul class="dropdown-menu dropdown-menu-end">
+      <li><a class="dropdown-item" href="{{ url_for('change_password') }}">Zmień hasło</a></li>
+      <li><hr class="dropdown-divider"></li>
+      <li><a class="dropdown-item" href="{{ url_for('logout') }}">Wyloguj</a></li>
+    </ul>
+  </div>
+</nav>
+
+<div class="card shadow-sm">
+  <div class="card-body">
+    <p class="text-muted text-center mb-0">Tutaj pojawi się zawartość aplikacji.</p>
+  </div>
+</div>
+
+{% endblock %}

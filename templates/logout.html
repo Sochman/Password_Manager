@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+{% block title %}Wylogowano{% endblock %}
+{% block content %}
+<div class="text-center">
+  <h2>Zostałeś wylogowany.</h2>
+  <a href="{{ url_for('login') }}" class="btn btn-primary">Zaloguj ponownie</a>
+</div>
+{% endblock %}

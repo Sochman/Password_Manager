@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Logowanie{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+  <div class="card mx-auto" style="max-width:400px;">
+    <div class="card-body">
+      <h2>Logowanie</h2>
+      <form method="post">
+        {{ form.hidden_tag() }}
+
+        <div class="mb-3">
+          {{ form.email(class="form-control" + (" is-invalid" if form.email.errors else ""), placeholder="E-mail") }}
+          {% for err in form.email.errors %}
+            <div class="invalid-feedback">{{ err }}</div>
+          {% endfor %}
+        </div>
+
+        <div class="mb-3">
+          {{ form.password(class="form-control" + (" is-invalid" if form.password.errors else ""), placeholder="Hasło") }}
+          {% for err in form.password.errors %}
+            <div class="invalid-feedback">{{ err }}</div>
+          {% endfor %}
+        </div>
+
+        {{ form.submit(class="btn btn-primary w-100") }}
+      </form>
+
+      <p class="mt-3 text-center">
+        Nie masz konta?
+        <a href="{{ url_for('register') }}">Zarejestruj się</a>
+      </p>
+    </div>
+  </div>
+</div>
+{% endblock %}

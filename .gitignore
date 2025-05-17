@@ -1,0 +1,6 @@
+# Ignoruj plik środowiskowy i bazę danych
+users.db
+.env
+__pycache__/
+*.pyc
+

@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Weryfikacja 2FA{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+  <div class="card mx-auto" style="max-width: 450px;">
+    <div class="card-body text-center">
+      <h2>Weryfikacja kodu 2FA</h2>
+      <p>Wpisz kod z aplikacji uwierzytelniającej.</p>
+
+      <form method="post">
+        {{ form.hidden_tag() }}
+        <div class="mb-3">
+          {{ form.code(class="form-control text-center" + (" is-invalid" if form.code.errors else ""), placeholder="Kod 2FA") }}
+          {% for err in form.code.errors %}
+            <div class="invalid-feedback d-block">{{ err }}</div>
+          {% endfor %}
+        </div>
+        {{ form.submit(class="btn btn-primary w-100") }}
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
