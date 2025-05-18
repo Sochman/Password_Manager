@@ -1,4 +1,4 @@
-# Password Manager (Flask)
+# Password Manager
 
 Bezpieczna aplikacja webowa do zarządzania kontami użytkowników z obsługą:
 
