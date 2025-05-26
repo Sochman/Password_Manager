@@ -1,6 +1,8 @@
 # Importy
 import os
 import sqlite3
+import secrets
+import string
 from pathlib import Path
 from flask import (
     Flask,
@@ -11,11 +13,10 @@ from flask import (
     flash,
     g,
     request,
-    )
+)
 import pyotp
 import qrcode
 import base64
-
 from io import BytesIO
 from cryptography.fernet import Fernet
 from functools import wraps
@@ -24,7 +25,7 @@ from passlib.hash import argon2
 from flask_wtf import CSRFProtect
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
-from forms import RegistrationForm, LoginForm, ChangePasswordForm, TwoFactorForm
+from forms import RegistrationForm, LoginForm, ChangePasswordForm, TwoFactorForm, PasswordGeneratorForm
 
 # Inicjalizacja struktury bazy danych (jeśli to pierwszy uruchomienie)
 load_dotenv(Path(__file__).parent / '.env')
@@ -67,7 +68,7 @@ def close_db(e=None):
 
 def init_db():
     """
-    Inicjalizuje tabelę `users` jeśli jeszcze nie istnieje.
+    Inicjalizuje tabele w bazie danych jeśli jeszcze nie istnieją.
     """
     db = get_db()
     db.execute(
@@ -80,6 +81,18 @@ def init_db():
             totp_secret TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             last_login TIMESTAMP
+        )
+        """
+    )
+    db.execute(
+        """
+        CREATE TABLE IF NOT EXISTS passwords (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            service_name TEXT NOT NULL,
+            password TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id)
         )
         """
     )
@@ -108,6 +121,11 @@ def decrypt_totp_secret(token: str) -> str:
     """Deszyfruje sekret TOTP z bazy danych."""
     return fernet.decrypt(token.encode()).decode()
 
+def generate_password(length=16):
+    """Generuje bezpieczne hasło o podanej długości."""
+    characters = string.ascii_letters + string.digits + string.punctuation
+    return ''.join(secrets.choice(characters) for _ in range(length))
+
 # --- Flask App Factory ---
 
 def create_app():
@@ -130,7 +148,7 @@ def create_app():
     # Automatyczne zamykanie połączenia z bazą po każdym żądaniu
     app.teardown_appcontext(close_db)
 
-    # Inicjalizacja  bazy danych (jeśli to pierwsze uruchomienie)
+    # Inicjalizacja bazy danych (jeśli to pierwsze uruchomienie)
     with app.app_context():
         init_db()
 
@@ -205,10 +223,76 @@ def create_app():
     @login_required
     def dashboard():
         """
-        Widok główny (dashboard) dostępny tylko po zalogowaniu.
+        Widok główny (dashboard) z menedżerem haseł.
         """
-        return render_template('dashboard.html', email=session['user_email'])
+        db = get_db()
+        user = db.execute(
+            "SELECT id FROM users WHERE email = ?", (session['user_email'],)
+        ).fetchone()
+        passwords = db.execute(
+            "SELECT id, service_name, password, created_at FROM passwords WHERE user_id = ? ORDER BY created_at DESC",
+            (user['id'],)
+        ).fetchall()
+        form = PasswordGeneratorForm()
+        return render_template('dashboard.html', email=session['user_email'], form=form, passwords=passwords)
     
+    @app.route('/generate-password', methods=['POST'])
+    @login_required
+    @limiter.limit("10 per minute")
+    def generate_password_route():
+        """
+        Generuje i zapisuje nowe hasło dla użytkownika.
+        """
+        form = PasswordGeneratorForm()
+        if form.validate_on_submit():
+            db = get_db()
+            user = db.execute(
+                "SELECT id FROM users WHERE email = ?", (session['user_email'],)
+            ).fetchone()
+            password = generate_password(form.length.data)
+            service_name = form.service_name.data.strip()
+            
+            try:
+                db.execute(
+                    "INSERT INTO passwords (user_id, service_name, password) VALUES (?, ?, ?)",
+                    (user['id'], service_name, password)
+                )
+                db.commit()
+                flash("Hasło zostało wygenerowane i zapisane.", "success")
+            except sqlite3.IntegrityError:
+                flash("Błąd podczas zapisywania hasła.", "danger")
+        
+        return redirect(url_for('dashboard'))
+
+    @app.route('/delete-password/<int:password_id>', methods=['POST'])
+    @login_required
+    @limiter.limit("10 per minute")
+    def delete_password(password_id):
+        """
+        Usuwa hasło użytkownika z bazy danych.
+        """
+        db = get_db()
+        user = db.execute(
+            "SELECT id FROM users WHERE email = ?", (session['user_email'],)
+        ).fetchone()
+        
+        # Sprawdzamy, czy hasło należy do użytkownika
+        password = db.execute(
+            "SELECT user_id FROM passwords WHERE id = ?", (password_id,)
+        ).fetchone()
+        
+        if password and password['user_id'] == user['id']:
+            db.execute(
+                "DELETE FROM passwords WHERE id = ? AND user_id = ?",
+                (password_id, user['id'])
+            )
+            db.commit()
+            flash("Hasło zostało usunięte.", "success")
+        else:
+            flash("Nie znaleziono hasła lub brak uprawnień.", "danger")
+        
+        return redirect(url_for('dashboard'))
+
     @app.route('/change-password', methods=['GET', 'POST'])
     @login_required
     def change_password():

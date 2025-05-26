@@ -1,7 +1,7 @@
 # Importy
 from flask_wtf import FlaskForm
-from wtforms import StringField, PasswordField, SubmitField, ValidationError
-from wtforms.validators import DataRequired, Email, EqualTo, Regexp, Length
+from wtforms import StringField, PasswordField, SubmitField, ValidationError, IntegerField
+from wtforms.validators import DataRequired, Email, EqualTo, Regexp, Length, NumberRange
 import hashlib
 import requests
 
@@ -12,19 +12,6 @@ def is_password_pwned(password: str) -> bool:
     """
     Sprawdza, czy podane hasło zostało ujawnione w publicznych wyciekach danych
     (usługa Have I Been Pwned – API k-anonimowe).
-
-    Zasada działania:
-    - Hasło jest haszowane SHA1.
-    - Do API wysyłane jest tylko 5 pierwszych znaków (prefix).
-    - Odpowiedź zawiera wszystkie końcówki pasujące do prefixu.
-    - Jeśli pełny hash istnieje na liście – hasło uznajemy za niebezpieczne.
-
-    Bezpieczeństwo:
-    - Nie wysyłamy pełnego hasła (ani nawet jego pełnego SHA1).
-    - Jeśli API nie odpowiada, nie blokujemy użytkownika.
-
-    :param password: Hasło w formie tekstowej (przed haszowaniem).
-    :return: True, jeśli hasło znajduje się w wycieku. False w przeciwnym razie.
     """
     try:
         sha1 = hashlib.sha1(password.encode('utf-8')).hexdigest().upper()
@@ -48,7 +35,6 @@ def is_password_pwned(password: str) -> bool:
 class RegistrationForm(FlaskForm):
     """
     Formularz rejestracji użytkownika.
-    Sprawdza poprawność e-maila, siłę hasła oraz czy hasło nie znajduje się w znanych wyciekach.
     """
     email = StringField(
         'E-mail',
@@ -89,7 +75,6 @@ class RegistrationForm(FlaskForm):
 class LoginForm(FlaskForm):
     """
     Formularz logowania użytkownika.
-    Podstawowa walidacja obecności danych i formatu e-mail.
     """
     email = StringField(
         'E-mail',
@@ -107,11 +92,7 @@ class LoginForm(FlaskForm):
 
 class ChangePasswordForm(FlaskForm):
     """
-    Formularz zmiany hasła:
-    - wymaga starego hasła
-    - nowe hasło musi spełniać kryteria bezpieczeństwa
-    - nowe hasło nie może być z wycieków (HIBP)
-    - hasła muszą się zgadzać (potwierdzenie)
+    Formularz zmiany hasła.
     """
     old_password = PasswordField("Stare hasło", validators=[DataRequired()])
     new_password = PasswordField("Nowe hasło", validators=[
@@ -138,8 +119,7 @@ class ChangePasswordForm(FlaskForm):
 
 class TwoFactorForm(FlaskForm):
     """
-    Formularz kodu TOTP dla 2FA (Google/Microsoft Authenticator).
-    Kod musi być 6-cyfrowy.
+    Formularz kodu TOTP dla 2FA.
     """
     code = StringField(
         "Kod 2FA",
@@ -149,3 +129,24 @@ class TwoFactorForm(FlaskForm):
         ]
     )
     submit = SubmitField("Zweryfikuj")
+
+class PasswordGeneratorForm(FlaskForm):
+    """
+    Formularz do generowania i zapisywania haseł.
+    """
+    service_name = StringField(
+        'Nazwa serwisu',
+        validators=[
+            DataRequired(message="Nazwa serwisu jest wymagana."),
+            Length(max=100, message="Nazwa serwisu nie może przekraczać 100 znaków.")
+        ]
+    )
+    length = IntegerField(
+        'Długość hasła',
+        validators=[
+            DataRequired(message="Długość hasła jest wymagana."),
+            NumberRange(min=8, max=50, message="Długość hasła musi być między 8 a 50 znaków.")
+        ],
+        default=16
+    )
+    submit = SubmitField('Wygeneruj i zapisz')
