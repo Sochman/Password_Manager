@@ -18,10 +18,107 @@
   </div>
 </nav>
 
-<div class="card shadow-sm">
+<div class="card shadow-sm mb-4">
   <div class="card-body">
-    <p class="text-muted text-center mb-0">Tutaj pojawi się zawartość aplikacji.</p>
+    <h5 class="card-title">Menedżer haseł</h5>
+    <form method="POST" action="{{ url_for('generate_password_route') }}">
+      {{ form.hidden_tag() }}
+      <div class="mb-3">
+        {{ form.service_name.label(class="form-label") }}
+        {{ form.service_name(class="form-control") }}
+        {% if form.service_name.errors %}
+          {% for error in form.service_name.errors %}
+            <div class="text-danger">{{ error }}</div>
+          {% endfor %}
+        {% endif %}
+      </div>
+      <div class="mb-3">
+        {{ form.length.label(class="form-label") }}
+        {{ form.length(class="form-control") }}
+        {% if form.length.errors %}
+          {% for error in form.length.errors %}
+            <div class="text-danger">{{ error }}</div>
+          {% endfor %}
+        {% endif %}
+      </div>
+      {{ form.submit(class="btn btn-primary") }}
+    </form>
   </div>
 </div>
+
+{% if passwords %}
+<div class="card shadow-sm">
+  <div class="card-body">
+    <h5 class="card-title">Zapisane hasła</h5>
+    <table class="table table-striped">
+      <thead>
+        <tr>
+          <th>Serwis</th>
+          <th>Hasło</th>
+          <th>Data utworzenia</th>
+          <th>Akcje</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for password in passwords %}
+        <tr>
+          <td>{{ password.service_name }}</td>
+          <td>
+            <span class="password-text" style="font-family: monospace;" data-password="{{ password.password }}" data-hidden="true">••••••••••••••••</span>
+            <button class="btn btn-sm btn-outline-secondary toggle-password-btn" type="button">Pokaż</button>
+            <button class="btn btn-sm btn-outline-secondary copy-btn" data-password="{{ password.password }}">Kopiuj</button>
+          </td>
+          <td>{{ password.created_at }}</td>
+          <td>
+            <form action="{{ url_for('delete_password', password_id=password.id) }}" method="POST" style="display:inline;">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Czy na pewno chcesz usunąć to hasło?');">Usuń</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+  // Funkcja do kopiowania hasła
+  document.querySelectorAll('.copy-btn').forEach(button => {
+    button.addEventListener('click', () => {
+      const password = button.getAttribute('data-password');
+      navigator.clipboard.writeText(password).then(() => {
+        button.textContent = 'Skopiowano!';
+        setTimeout(() => {
+          button.textContent = 'Kopiuj';
+        }, 2000);
+      });
+    });
+  });
+
+  // Funkcja do przełączania widoczności hasła
+  document.querySelectorAll('.toggle-password-btn').forEach(button => {
+    button.addEventListener('click', () => {
+      const passwordSpan = button.previousElementSibling;
+      const isHidden = passwordSpan.getAttribute('data-hidden') === 'true';
+      if (isHidden) {
+        passwordSpan.textContent = passwordSpan.getAttribute('data-password');
+        passwordSpan.setAttribute('data-hidden', 'false');
+        button.textContent = 'Ukryj';
+      } else {
+        passwordSpan.textContent = '••••••••••••••••';
+        passwordSpan.setAttribute('data-hidden', 'true');
+        button.textContent = 'Pokaż';
+      }
+    });
+  });
+</script>
+{% else %}
+<div class="card shadow-sm">
+  <div class="card-body">
+    <p class="text-muted text-center mb-0">Brak zapisanych haseł. Wygeneruj nowe hasło powyżej.</p>
+  </div>
+</div>
+{% endif %}
 
 {% endblock %}
