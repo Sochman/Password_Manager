@@ -25,7 +25,10 @@ from passlib.hash import argon2
 from flask_wtf import CSRFProtect
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
-from forms import RegistrationForm, LoginForm, ChangePasswordForm, TwoFactorForm, PasswordGeneratorForm
+from forms import (
+    RegistrationForm, LoginForm, ChangePasswordForm,
+    TwoFactorForm, PasswordGeneratorForm, ManualPasswordForm
+)
 
 # Inicjalizacja struktury bazy danych (jeśli to pierwszy uruchomienie)
 load_dotenv(Path(__file__).parent / '.env')
@@ -234,7 +237,8 @@ def create_app():
             (user['id'],)
         ).fetchall()
         form = PasswordGeneratorForm()
-        return render_template('dashboard.html', email=session['user_email'], form=form, passwords=passwords)
+        manual_form = ManualPasswordForm()
+        return render_template('dashboard.html', email=session['user_email'], form=form, manual_form=manual_form, passwords=passwords)
     
     @app.route('/generate-password', methods=['POST'])
     @login_required
@@ -262,6 +266,38 @@ def create_app():
             except sqlite3.IntegrityError:
                 flash("Błąd podczas zapisywania hasła.", "danger")
         
+        return redirect(url_for('dashboard'))
+    
+    @app.route('/add-custom-password', methods=['POST'])
+    @login_required
+    @limiter.limit("10 per minute")
+    def add_custom_password():
+        """
+        Dodaje własne hasło użytkownika po walidacji.
+        """
+        form = ManualPasswordForm()
+        if form.validate_on_submit():
+            db = get_db()
+            user = db.execute(
+                "SELECT id FROM users WHERE email = ?", (session['user_email'],)
+            ).fetchone()
+            service_name = form.service_name.data.strip()
+            password = form.password.data.strip()
+
+            try:
+                db.execute(
+                    "INSERT INTO passwords (user_id, service_name, password) VALUES (?, ?, ?)",
+                    (user['id'], service_name, password)
+                )
+                db.commit()
+                flash("Hasło zostało dodane ręcznie.", "success")
+            except sqlite3.IntegrityError:
+                flash("Błąd przy zapisie hasła.", "danger")
+        else:
+            for field, errors in form.errors.items():
+                for error in errors:
+                    flash(error, "danger")
+
         return redirect(url_for('dashboard'))
 
     @app.route('/delete-password/<int:password_id>', methods=['POST'])

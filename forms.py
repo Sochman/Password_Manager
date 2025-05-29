@@ -150,3 +150,27 @@ class PasswordGeneratorForm(FlaskForm):
         default=16
     )
     submit = SubmitField('Wygeneruj i zapisz')
+
+class ManualPasswordForm(FlaskForm):
+    service_name = StringField(
+        'Nazwa serwisu',
+        validators=[
+            DataRequired(message="Nazwa serwisu jest wymagana."),
+            Length(max=100, message="Nazwa serwisu nie może przekraczać 100 znaków.")
+        ]
+    )
+    password = PasswordField(
+        'Własne hasło',
+        validators=[
+            DataRequired(message="Hasło jest wymagane."),
+            Regexp(
+                PASSWORD_REGEX,
+                message="Hasło musi mieć min. 8 znaków, zawierać wielką literę, małą literę, cyfrę i znak specjalny."
+            )
+        ]
+    )
+    submit = SubmitField("Dodaj własne hasło")
+
+    def validate_password(self, field):
+        if is_password_pwned(field.data):
+            raise ValidationError("To hasło zostało ujawnione w wycieku danych. Wybierz inne.")

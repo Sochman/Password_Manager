@@ -18,6 +18,7 @@
   </div>
 </nav>
 
+<!-- Generator hasla -->
 <div class="card shadow-sm mb-4">
   <div class="card-body">
     <h5 class="card-title">Menedżer haseł</h5>
@@ -45,6 +46,36 @@
     </form>
   </div>
 </div>
+
+<!-- Wlasne haslo -->
+<div class="card shadow-sm mb-4">
+  <div class="card-body">
+    <h5 class="card-title">Dodaj własne hasło</h5>
+    <form method="POST" action="{{ url_for('add_custom_password') }}">
+      {{ manual_form.hidden_tag() }}
+      <div class="mb-3">
+        {{ manual_form.service_name.label(class="form-label") }}
+        {{ manual_form.service_name(class="form-control") }}
+        {% if manual_form.service_name.errors %}
+          {% for error in manual_form.service_name.errors %}
+            <div class="text-danger">{{ error }}</div>
+          {% endfor %}
+        {% endif %}
+      </div>
+      <div class="mb-3">
+        {{ manual_form.password.label(class="form-label") }}
+        {{ manual_form.password(class="form-control") }}
+        {% if manual_form.password.errors %}
+          {% for error in manual_form.password.errors %}
+            <div class="text-danger">{{ error }}</div>
+          {% endfor %}
+        {% endif %}
+      </div>
+      {{ manual_form.submit(class="btn btn-secondary") }}
+    </form>
+  </div>
+</div>
+
 
 {% if passwords %}
 <div class="card shadow-sm">
