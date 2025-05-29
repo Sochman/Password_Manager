@@ -172,5 +172,6 @@ class ManualPasswordForm(FlaskForm):
     submit = SubmitField("Dodaj własne hasło")
 
     def validate_password(self, field):
+        print(["[DEBUG] Walidacja hasła", field.data])
         if is_password_pwned(field.data):
             raise ValidationError("To hasło zostało ujawnione w wycieku danych. Wybierz inne.")

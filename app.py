@@ -124,6 +124,9 @@ def decrypt_totp_secret(token: str) -> str:
     """Deszyfruje sekret TOTP z bazy danych."""
     return fernet.decrypt(token.encode()).decode()
 
+# drugi fernet - do haseł zapisanych na koncie uzytkownika
+fernet_passwords = Fernet(os.environ['PASSWORD_ENCRYPTION_KEY'])
+
 def generate_password(length=16):
     """Generuje bezpieczne hasło o podanej długości."""
     characters = string.ascii_letters + string.digits + string.punctuation
@@ -232,10 +235,30 @@ def create_app():
         user = db.execute(
             "SELECT id FROM users WHERE email = ?", (session['user_email'],)
         ).fetchone()
-        passwords = db.execute(
+        
+        # passwords = db.execute(
+        #     "SELECT id, service_name, password, created_at FROM passwords WHERE user_id = ? ORDER BY created_at DESC",
+        #     (user['id'],)
+        # ).fetchall()
+
+        rows = db.execute(
             "SELECT id, service_name, password, created_at FROM passwords WHERE user_id = ? ORDER BY created_at DESC",
             (user['id'],)
         ).fetchall()
+
+        passwords = []
+        for row in rows:
+            try:
+                decrypted = fernet_passwords.decrypt(row['password'].encode()).decode()
+            except Exception:
+                decrypted = "[BŁĄD DESZYFRACJI]"
+            passwords.append({
+                "id": row["id"],
+                "service_name": row["service_name"],
+                "password": decrypted,
+                "created_at": row["created_at"]
+            })
+
         form = PasswordGeneratorForm()
         manual_form = ManualPasswordForm()
         return render_template('dashboard.html', email=session['user_email'], form=form, manual_form=manual_form, passwords=passwords)
@@ -253,13 +276,16 @@ def create_app():
             user = db.execute(
                 "SELECT id FROM users WHERE email = ?", (session['user_email'],)
             ).fetchone()
-            password = generate_password(form.length.data)
+            #password = generate_password(form.length.data) <- bez szyfrowawnia
+            raw_password = generate_password(form.length.data)
+            print(["[DEBUG] hasło przed szyfrowaniem", raw_password])
+            encrypted_password = fernet_passwords.encrypt(raw_password.encode()).decode()
             service_name = form.service_name.data.strip()
-            
+            print(["[DEBUG] haslo po szyfrowaniu", encrypted_password])
             try:
                 db.execute(
                     "INSERT INTO passwords (user_id, service_name, password) VALUES (?, ?, ?)",
-                    (user['id'], service_name, password)
+                    (user['id'], service_name, encrypted_password)
                 )
                 db.commit()
                 flash("Hasło zostało wygenerowane i zapisane.", "success")
@@ -283,11 +309,12 @@ def create_app():
             ).fetchone()
             service_name = form.service_name.data.strip()
             password = form.password.data.strip()
+            encrypted_password = fernet_passwords.encrypt(password.encode()).decode()
 
             try:
                 db.execute(
                     "INSERT INTO passwords (user_id, service_name, password) VALUES (?, ?, ?)",
-                    (user['id'], service_name, password)
+                    (user['id'], service_name, encrypted_password)
                 )
                 db.commit()
                 flash("Hasło zostało dodane ręcznie.", "success")
