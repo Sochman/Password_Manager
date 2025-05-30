@@ -71,6 +71,13 @@
           {% endfor %}
         {% endif %}
       </div>
+      <ul id="password-requirements" class="list-unstyled small mt-2">
+        <li id="len" class="text-danger"><span class="me-1" data-icon>❌</span>min. 8 znaków</li>
+        <li id="lower" class="text-danger"><span class="me-1" data-icon>❌</span>mała litera</li>
+        <li id="upper" class="text-danger"><span class="me-1" data-icon>❌</span>wielka litera</li>
+        <li id="digit" class="text-danger"><span class="me-1" data-icon>❌</span>cyfra</li>
+        <li id="special" class="text-danger"><span class="me-1" data-icon>❌</span>znak specjalny</li>
+      </ul>
       {{ manual_form.submit(class="btn btn-secondary") }}
     </form>
   </div>
@@ -144,6 +151,33 @@
     });
   });
 </script>
+
+<script>
+  const passwordField = document.querySelector('input[name="password"]');
+  const rules = {
+    len: val => val.length >= 8,
+    lower: val => /[a-z]/.test(val),
+    upper: val => /[A-Z]/.test(val),
+    digit: val => /\d/.test(val),
+    special: val => /[^\w\s]/.test(val)
+  };
+
+  if (passwordField) {
+    passwordField.addEventListener('input', () => {
+      const val = passwordField.value;
+      for (const [id, test] of Object.entries(rules)) {
+        const li = document.getElementById(id);
+        const icon = li.querySelector('[data-icon]');
+        const passed = test(val);
+        li.classList.toggle('text-success', passed);
+        li.classList.toggle('text-danger', !passed);
+        icon.textContent = passed ? '✅' : '❌';
+      }
+    });
+  }
+</script>
+
+
 {% else %}
 <div class="card shadow-sm">
   <div class="card-body">
