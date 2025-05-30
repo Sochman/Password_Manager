@@ -64,14 +64,14 @@
       </div>
       <div class="mb-3">
         {{ manual_form.password.label(class="form-label") }}
-        {{ manual_form.password(class="form-control") }}
+        {{ manual_form.password(class="form-control", id="manual-password") }}
         {% if manual_form.password.errors %}
           {% for error in manual_form.password.errors %}
             <div class="text-danger">{{ error }}</div>
           {% endfor %}
         {% endif %}
       </div>
-      <ul id="password-requirements" class="list-unstyled small mt-2">
+      <ul id="password-requirements" class="list-unstyled small mt-2" style="display: none;">
         <li id="len" class="text-danger"><span class="me-1" data-icon>❌</span>min. 8 znaków</li>
         <li id="lower" class="text-danger"><span class="me-1" data-icon>❌</span>mała litera</li>
         <li id="upper" class="text-danger"><span class="me-1" data-icon>❌</span>wielka litera</li>
@@ -152,8 +152,12 @@
   });
 </script>
 
+
 <script>
-  const passwordField = document.querySelector('input[name="password"]');
+  // dynamiczne wyswietlanie informacji dotyczacych wytycznych hasla
+  const passwordField = document.getElementById('manual-password');
+  const rulesList = document.getElementById('password-requirements');
+
   const rules = {
     len: val => val.length >= 8,
     lower: val => /[a-z]/.test(val),
@@ -165,6 +169,14 @@
   if (passwordField) {
     passwordField.addEventListener('input', () => {
       const val = passwordField.value;
+
+      // wyświetla liste dopiero po zaczęciu wpisywania hasła ręcznie
+      if (val.length > 0) {
+        rulesList.style.display = 'block';
+      } else {
+        rulesList.style.display = 'none';
+      }
+
       for (const [id, test] of Object.entries(rules)) {
         const li = document.getElementById(id);
         const icon = li.querySelector('[data-icon]');
